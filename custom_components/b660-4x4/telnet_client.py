@@ -1,3 +1,4 @@
+# telnet_client.py
 import telnetlib
 import logging
 
@@ -15,18 +16,26 @@ class TelnetClient:
     def connect(self):
         self.telnet = telnetlib.Telnet(self.host, self.port, 10)
         self.telnet.read_until(b"login: ", 5)
+        _LOGGER.info("login command recieved")
         self.telnet.write(self.username.encode("ascii") + b"\n")
         self.telnet.read_until(b"Password: ", 5)
+        _LOGGER.info("password command recieved")
         self.telnet.write(self.password.encode("ascii") + b"\n")
         return self.telnet.read_some().decode("ascii")
 
     def send_command(self, command):
         if self.telnet:
+            _LOGGER.info("Sending command %s", command)
             self.telnet.write(command.encode("ascii") + b"\n")
             res = self.telnet.read_some().decode("ascii").strip()
+            if not res:
+                _LOGGER.info("Lost connection, attempting reconnect")
+                self.connect()
+                return False
             _LOGGER.info("Telnet response %s", res)
             return res
-        return False
+        else:
+            return False
 
     def switch_input(self, inp, output):
         command = f"SET SW in{inp} out{output}"

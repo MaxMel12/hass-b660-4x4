@@ -15,6 +15,10 @@ from .telnet_client import TelnetClient
 from .const import DOMAIN
 from homeassistant.helpers.entity import Entity
 from datetime import timedelta
+import asyncio
+from homeassistant.components.persistent_notification import (
+    create as create_notification,
+)
 
 # Constants for your integration
 _LOGGER = logging.getLogger(__name__)
@@ -38,6 +42,11 @@ CONFIG_SCHEMA = vol.Schema(
 SCAN_INTERVAL = timedelta(seconds=30)
 
 
+async def setup_with_retry(hass, config, retry_interval):
+    await asyncio.sleep(retry_interval)
+    await async_setup(hass, config)
+
+
 async def async_setup(hass: HomeAssistant, config: dict):
     """Set up the component."""
     conf = config[DOMAIN]
@@ -48,15 +57,16 @@ async def async_setup(hass: HomeAssistant, config: dict):
 
     telnet_client = TelnetClient(ip, port, username, password)
 
-    hass.data[DOMAIN] = HDMIMatrix(telnet_client)
+    hass.data[DOMAIN] = HDMIMatrix(hass, telnet_client)
 
     try:
-        await hass.async_add_executor_job(telnet_client.connect())
+        await hass.async_add_executor_job(telnet_client.connect)
     except Exception as e:
         _LOGGER.error("Could not connect to Telnet server: %s", e)
-        return False
+        _LOGGER.info("Attempting reconnection in 60 seconds")
+        asyncio.create_task(setup_with_retry(hass, config, retry_interval=60))
+        return True
 
-    # Now, add your entity to the component
     hass.async_create_task(
         hass.helpers.discovery.async_load_platform("sensor", DOMAIN, {}, config)
     )
@@ -68,34 +78,41 @@ async def async_setup(hass: HomeAssistant, config: dict):
         await device.switch_input(inp, output)
 
     async def handle_set_cec_power(call):
+        out = call.data.get("output")
         val = call.data.get("value")
         device = hass.data[DOMAIN]
-        await device.set_CEC_power(val)
+        await device.set_CEC_power(out, val)
 
     async def handle_set_cec_auto_power(call):
+        out = call.data.get("output")
         val = call.data.get("value")
         device = hass.data[DOMAIN]
-        await device.set_CEC_auto_power(val)
+        await device.set_CEC_auto_power(out, val)
 
     async def handle_set_power_delay_time(call):
+        out = call.data.get("output")
         val = call.data.get("value")
         device = hass.data[DOMAIN]
-        await device.set_CEC_power_delay_time(val)
+        await device.set_CEC_power_delay_time(out, val)
 
     async def handle_set_hdcp_support(call):
+        inp = call.data.get("input")
         val = call.data.get("value")
         device = hass.data[DOMAIN]
-        await device.set_HDCP_support(val)
+        await device.set_HDCP_support(inp, val)
 
     async def handle_set_input_edid(call):
+        inp = call.data.get("input")
         val = call.data.get("value")
         device = hass.data[DOMAIN]
-        await device.set_input_EDID(val)
+        await device.set_input_EDID(inp, val)
 
     async def handle_set_mute(call):
+        outtype = call.data.get("type")
+        out = call.data.get("out")
         val = call.data.get("value")
         device = hass.data[DOMAIN]
-        await device.set_mute(val)
+        await device.set_mute(outtype, out, val)
 
     hass.services.async_register(DOMAIN, "switch_input", handle_switch_input)
     hass.services.async_register(DOMAIN, "set_cec_power", handle_set_cec_power)
@@ -105,9 +122,7 @@ async def async_setup(hass: HomeAssistant, config: dict):
     hass.services.async_register(
         DOMAIN, "set_power_delay_time", handle_set_power_delay_time
     )
-    hass.services.async_register(
-        DOMAIN, "handle_set_hdcp_support", handle_set_hdcp_support
-    )
+    hass.services.async_register(DOMAIN, "set_hdcp_support", handle_set_hdcp_support)
     hass.services.async_register(DOMAIN, "set_input_edid", handle_set_input_edid)
     hass.services.async_register(DOMAIN, "set_mute", handle_set_mute)
 
@@ -115,8 +130,9 @@ async def async_setup(hass: HomeAssistant, config: dict):
 
 
 class HDMIMatrix:
-    def __init__(self, telnet_client):
+    def __init__(self, hass, telnet_client):
         self.states = {
+            "connected": False,
             "input1": 1,
             "input2": 2,
             "input3": 3,
@@ -150,7 +166,7 @@ class HDMIMatrix:
         }
 
         self.name = "HDMI Matrix"
-
+        self.hass = hass
         self.client = telnet_client
 
     def add_state_change_callback(self, callback):
@@ -160,6 +176,7 @@ class HDMIMatrix:
         inp = int(inp)
         if inp < 1 or inp > 4 or output < 1 or output > 4:
             logging.error("Incorrect params")
+            create_notification(self.hass, "Incorrect params", "HDMI Matrix error")
             return
 
         success = self.client.switch_input(inp, output)
@@ -168,11 +185,15 @@ class HDMIMatrix:
             keys = ["input1", "input2", "input3", "input4"]
             self.update_state_on_success(keys, inp, output)
         else:
+            create_notification(
+                self.hass, "Switching input failed", "HDMI Matrix error"
+            )
             logging.error("SWITCHING INPUT FAILED")
 
     async def set_CEC_power(self, out, val):
-        if out < 1 or out > 4 or not val.isinstance(bool):
+        if out < 1 or out > 4 or not isinstance(val, bool):
             logging.error("Incorrect params")
+            create_notification(self.hass, "Incorrect params", "HDMI Matrix error")
             return
 
         success = self.client.set_CEC_power(out, val)
@@ -180,11 +201,13 @@ class HDMIMatrix:
             keys = ["out1CECPower", "out2CECPower", "out3CECPower", "out4CECPower"]
             self.update_state_on_success(keys, out, val)
         else:
+            create_notification(self.hass, "Set CEC power failed", "HDMI Matrix error")
             logging.error("SET CEC POWER FAILED")
 
     async def set_CEC_auto_power(self, out, val):
-        if out < 1 or out > 4 or not val.isinstance(bool):
+        if out < 1 or out > 4 or not isinstance(val, bool):
             logging.error("Incorrect params")
+            create_notification(self.hass, "Incorrect params", "HDMI Matrix error")
             return
 
         success = self.client.set_CEC_auto_power(out, val)
@@ -197,11 +220,15 @@ class HDMIMatrix:
             ]
             self.update_state_on_success(keys, out, val)
         else:
+            create_notification(
+                self.hass, "Set CEC auto power failed", "HDMI Matrix error"
+            )
             logging.error("SET CEC AUTO POWER FAILED")
 
     async def set_CEC_power_delay_time(self, out, val):
-        if out < 1 or out > 4 or not val.isinstance(bool):
+        if out < 1 or out > 4 or not isinstance(val, bool):
             logging.error("Incorrect params")
+            create_notification(self.hass, "Incorrect params", "HDMI Matrix error")
             return
 
         success = self.client.set_CEC_power_delay_time(out, val)
@@ -214,11 +241,15 @@ class HDMIMatrix:
             ]
             self.update_state_on_success(keys, out, val)
         else:
+            create_notification(
+                self.hass, "Set CEC power delay failed", "HDMI Matrix error"
+            )
             logging.error("SET CEC POWER DELAY TIME FAILED")
 
     async def set_HDCP_support(self, inp, val):
-        if inp < 1 or inp > 4 or not val.isinstance(bool):
+        if inp < 1 or inp > 4 or not isinstance(val, bool):
             logging.error("Incorrect params")
+            create_notification(self.hass, "Incorrect params", "HDMI Matrix error")
             return
 
         success = self.client.set_HDCP_support(inp, val)
@@ -231,11 +262,13 @@ class HDMIMatrix:
             ]
             self.update_state_on_success(keys, inp, val)
         else:
+            create_notification(self.hass, "Set HDCP failed", "HDMI Matrix error")
             logging.error("SET HDCP SUPPORT FAILED")
 
     async def set_input_EDID(self, inp, edid_val):
         if inp < 1 or inp > 4:
             logging.error("Incorrect params")
+            create_notification(self.hass, "Incorrect params", "HDMI Matrix error")
             return
 
         success = self.client.set_input_EDID(inp, edid_val)
@@ -243,15 +276,17 @@ class HDMIMatrix:
             keys = ["in1EDID", "in2EDID", "in3EDID", "in4EDID"]
             self.update_state_on_success(keys, inp, edid_val)
         else:
+            create_notification(self.hass, "Set EDID Failed", "HDMI Matrix error")
             logging.error("SET INPUT EDID FAILED")
 
     async def set_mute(self, type, out, val):
         if (
             out < 1
             or out > 4
-            or not val.isinstance(bool)
+            or not isinstance(val, bool)
             or type not in ["hdmi", "spdif", "audio"]
         ):
+            create_notification(self.hass, "Incorrect params", "HDMI Matrix error")
             logging.error("Incorrect params")
             return
 
@@ -268,6 +303,7 @@ class HDMIMatrix:
             # TODO update state key
             # self.update_state_on_success(keys, out, val)
         else:
+            create_notification(self.hass, "Set mute failed", "HDMI Matrix error")
             logging.error("SET MUTE FAILED")
 
     def update_state_on_success(self, keys, num, state):

@@ -1,7 +1,7 @@
 switch_input:
   description: Set an input to an output
   fields:
-    input:
+    Input:
       description: The input to switch (1,2,3,4)
       required: true
       selector:
@@ -9,7 +9,7 @@ switch_input:
           min: 1
           max: 4
           mode: box
-    output:
+    Output:
       description: The output to switch to (1,2,3,4)
       required: true
       selector:
@@ -17,3 +17,120 @@ switch_input:
           min: 1
           max: 4
           mode: box
+
+set_cec_power:
+  description: Set CEC power for a specific output.
+  fields:
+    output:
+      description: The output to set CEC power for (1,2,3,4)
+      required: true
+      selector:
+        number:
+          min: 1
+          max: 4
+          mode: box
+    value:
+      description: The value to set for CEC power (on or off).
+      required: true
+      selector:
+        boolean: {}
+
+set_cec_auto_power:
+  description: Set CEC auto power for a specific output.
+  fields:
+    output:
+      description: The output to set CEC auto power for (1,2,3,4)
+      required: true
+      selector:
+        number:
+          min: 1
+          max: 4
+          mode: box
+    value:
+      description: The value to set for CEC auto power (on or off).
+      required: true
+      selector:
+        boolean: {}
+
+set_power_delay_time:
+  description: Set power delay time for a specific output.
+  fields:
+    output:
+      description: The output to set power delay time for (1,2,3,4)
+      required: true
+      selector:
+        number:
+          min: 1
+          max: 4
+          mode: box
+    value:
+      description: The value to set for power delay time in minutes (0-30).
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 30
+          mode: box
+
+set_hdcp_support:
+  description: Enable or disable HDCP support for a specific input.
+  fields:
+    input:
+      description: The input to set HDCP support for (1,2,3,4)
+      required: true
+      selector:
+        number:
+          min: 1
+          max: 4
+          mode: box
+    value:
+      description: The value to set for HDCP support (on or off).
+      required: true
+      selector:
+        boolean: {}
+
+set_input_edid:
+  description: Set EDID for a specific input.
+  fields:
+    input:
+      description: The input to set EDID for (1,2,3,4)
+      required: true
+      selector:
+        number:
+          min: 1
+          max: 4
+          mode: box
+    value:
+      description: The EDID value to set (0-17).
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 17
+          mode: box
+
+set_mute:
+  description: Mute or unmute a specific output.
+  fields:
+    type:
+      description: The type of output to mute or unmute.
+      required: true
+      selector:
+        select:
+          options:
+            - "hdmi"
+            - "spdif"
+            - "audio"
+    out:
+      description: The output number to mute or unmute.
+      required: true
+      selector:
+        number:
+          min: 1
+          max: 2
+          mode: box
+    value:
+      description: The value to set for mute (on or off).
+      required: true
+      selector:
+        boolean: {}

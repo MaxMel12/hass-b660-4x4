@@ -39,5 +39,5 @@ class HDMIMatrixEntity(Entity):
     def unique_id(self):
         return "hdmi_matrix"
 
-    #async def async_update(self):
+    # async def async_update(self):
     #    self._state = await self._device.async_get_state()
