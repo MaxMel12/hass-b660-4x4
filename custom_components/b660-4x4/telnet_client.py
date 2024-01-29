@@ -14,9 +14,9 @@ class TelnetClient:
 
     def connect(self):
         self.telnet = telnetlib.Telnet(self.host, self.port, 10)
-        self.telnet.read_until(b"login: ")
+        self.telnet.read_until(b"login: ", 5)
         self.telnet.write(self.username.encode("ascii") + b"\n")
-        self.telnet.read_until(b"Password: ")
+        self.telnet.read_until(b"Password: ", 5)
         self.telnet.write(self.password.encode("ascii") + b"\n")
         return self.telnet.read_some().decode("ascii")
 
