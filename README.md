@@ -22,5 +22,7 @@ b660_4x4:
 # Usage
 Navigate to developer tools > services
 
-Search for the b660_4x4 service, and call the service
+Search for the b660_4x4 service, and call the various services
+
+Device command Docs: https://www.snapav.com/wcsstore/ExtendedSitesCatalogAssetStore/attachments/documents/MediaDistribution/ProtocolsAndDrivers/API_Command_Set_B-660-MTRX-4X4_v2.pdf
 
