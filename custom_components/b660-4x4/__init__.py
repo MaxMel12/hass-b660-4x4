@@ -51,7 +51,7 @@ async def async_setup(hass: HomeAssistant, config: dict):
     hass.data[DOMAIN] = HDMIMatrix(telnet_client)
 
     try:
-        telnet_client.connect()
+        await hass.async_add_executor_job(telnet_client.connect())
     except Exception as e:
         _LOGGER.error("Could not connect to Telnet server: %s", e)
         return False
