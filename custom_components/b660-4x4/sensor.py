@@ -1,5 +1,5 @@
 from .const import DOMAIN
-from .. import HDMIMatrix
+from . import HDMIMatrix
 from homeassistant.helpers.entity import Entity
 
 
@@ -12,6 +12,13 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 class HDMIMatrixEntity(Entity):
     def __init__(self, device: HDMIMatrix):
         self._device = device
+        device.add_state_change_callback(self.handle_state_change)
+
+    def handle_state_change(self, new_state):
+        # Update internal state
+        self._state = new_state
+        # Schedule an update in HA
+        self.async_schedule_update_ha_state()
 
     @property
     def name(self):
@@ -19,7 +26,7 @@ class HDMIMatrixEntity(Entity):
 
     @property
     def state(self):
-        return self._device.states["CECPower"]
+        return self._device.states["input1"]
         # Return the primary state of the entity
         # Example: return self._device.states['input1']
 
@@ -32,5 +39,5 @@ class HDMIMatrixEntity(Entity):
     def unique_id(self):
         return "hdmi_matrix"
 
-    # Implement any actions as methods or service callbacks
-    # For example, switching inputs, changing settings, etc
+    #async def async_update(self):
+    #    self._state = await self._device.async_get_state()

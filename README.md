@@ -16,21 +16,11 @@ b660_4x4:
   username: "username"
   password: "password"
 ```
-Replace **YOUR_OPENAI_API_KEY** with your actual OpenAI API key.
 
 **3.** Restart Home Assistant.
 
 # Usage
 Navigate to developer tools > services
 
-Switch to yaml mode and paste the following:
-
-```yaml
-service: b660_4x4.switch_input
-data:
-  input: 1
-  output: 2
-```
-
-Try different inputs and outputs to test
+Search for the b660_4x4 service, and call the service
 

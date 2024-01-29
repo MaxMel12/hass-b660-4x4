@@ -1,15 +1,14 @@
 {
-    "domain": "b660_4x4",
-    "name": "B660 HDMI Matrix",
-    "codeowners": ["@maxmel12"],
-    "config_flow": false,
-    "dependencies": [],
-    "documentation": "https://www.home-assistant.io/integrations/b660_4x4",
-    "homekit": {},
-    "iot_class": "local_polling",
-    "requirements": [],
-    "ssdp": [],
-    "zeroconf": [],
-    "version": "0.1.0"
-  }
-  
+  "domain": "b660_4x4",
+  "name": "hdmi switcher",
+  "codeowners": ["@maxmel12"],
+  "config_flow": false,
+  "dependencies": [],
+  "documentation": "https://www.home-assistant.io/integrations/b660-4x4",
+  "homekit": {},
+  "iot_class": "local_polling",
+  "requirements": [],
+  "ssdp": [],
+  "zeroconf": [],
+  "version": "0.1.1"
+}

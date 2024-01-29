@@ -1,0 +1,19 @@
+switch_input:
+  description: Set an input to an output
+  fields:
+    input:
+      description: The input to switch (1,2,3,4)
+      required: true
+      selector:
+        number:
+          min: 1
+          max: 4
+          mode: box
+    output:
+      description: The output to switch to (1,2,3,4)
+      required: true
+      selector:
+        number:
+          min: 1
+          max: 4
+          mode: box

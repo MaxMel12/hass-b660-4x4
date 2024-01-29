@@ -14,6 +14,7 @@ from homeassistant.helpers.entity_component import EntityComponent
 from .telnet_client import TelnetClient
 from .const import DOMAIN
 from homeassistant.helpers.entity import Entity
+from datetime import timedelta
 
 # Constants for your integration
 _LOGGER = logging.getLogger(__name__)
@@ -33,6 +34,8 @@ CONFIG_SCHEMA = vol.Schema(
     },
     extra=vol.ALLOW_EXTRA,
 )
+
+SCAN_INTERVAL = timedelta(seconds=30)
 
 
 async def async_setup(hass: HomeAssistant, config: dict):
@@ -118,74 +121,160 @@ class HDMIMatrix:
             "input2": 2,
             "input3": 3,
             "input4": 4,
-            "CECPower": False,
-            "CECAutoPower": False,
-            "CECPowerDelayTime": 2,
-            "HDCPSupport": False,
-            "input1EDID": 17,
-            "input2EDID": 17,
-            "input3EDID": 17,
-            "input4EDID": 17,
-            "mute": False,
+            "out1CECPower": False,
+            "out2CECPower": False,
+            "out3CECPower": False,
+            "out4CECPower": False,
+            "out1CECAutoPower": False,
+            "out2CECAutoPower": False,
+            "out3CECAutoPower": False,
+            "out4CECAutoPower": False,
+            "out1CECPowerDelayTime": 2,
+            "out2CECPowerDelayTime": 2,
+            "out3CECPowerDelayTime": 2,
+            "out4CECPowerDelayTime": 2,
+            "in1HDCPSupport": False,
+            "in2HDCPSupport": False,
+            "in3HDCPSupport": False,
+            "in4HDCPSupport": False,
+            "in1EDID": 17,
+            "in2EDID": 17,
+            "in3EDID": 17,
+            "in4EDID": 17,
+            "hdmi1Mute": False,
+            "hdmi2Mute": False,
+            "spdif1Mute": False,
+            "spdif2Mute": False,
+            "audio1Mute": False,
+            "audio2Mute": False,
         }
-
-        _LOGGER.info("RESETTING HDMI SWITCH")
 
         self.name = "HDMI Matrix"
 
         self.client = telnet_client
 
+    def add_state_change_callback(self, callback):
+        self._state_change_callback = callback
+
     async def switch_input(self, inp, output):
-        success = self.client.switch_input(inp, output)
         inp = int(inp)
+        if inp < 1 or inp > 4 or output < 1 or output > 4:
+            logging.error("Incorrect params")
+            return
+
+        success = self.client.switch_input(inp, output)
         logging.info(f"SWITCHING INPUT {inp} {output}")
         if success:
-            if (inp) == 1:
-                self.states["input1"] = output
-                logging.info(f"SWITCHING INPUT1 {inp} {output}")
-            if (inp) == 2:
-                self.states["input2"] = output
-                logging.info(f"SWITCHING INPUT2 {inp} {output}")
-            if (inp) == 3:
-                self.states["input3"] = output
-                logging.info(f"SWITCHING INPUT3 {inp} {output}")
-            if (inp) == 4:
-                self.states["input4"] = output
-                logging.info(f"SWITCHING INPUT4 {inp} {output}")
+            keys = ["input1", "input2", "input3", "input4"]
+            self.update_state_on_success(keys, inp, output)
+        else:
+            logging.error("SWITCHING INPUT FAILED")
 
-    async def set_CEC_power(self, val):
-        success = self.client.set_CEC_power(val)
-        if success:
-            self.states["CECPOower"] = val
+    async def set_CEC_power(self, out, val):
+        if out < 1 or out > 4 or not val.isinstance(bool):
+            logging.error("Incorrect params")
+            return
 
-    async def set_CEC_auto_power(self, val):
-        success = self.client.set_CEC_auto_power(val)
+        success = self.client.set_CEC_power(out, val)
         if success:
-            self.states["CECAutoPower"] = val
+            keys = ["out1CECPower", "out2CECPower", "out3CECPower", "out4CECPower"]
+            self.update_state_on_success(keys, out, val)
+        else:
+            logging.error("SET CEC POWER FAILED")
 
-    async def set_CEC_power_delay_time(self, val):
-        success = self.client.set_CEC_power_delay_time(val)
-        if success:
-            self.states["CECPowerDelayTime"] = val
+    async def set_CEC_auto_power(self, out, val):
+        if out < 1 or out > 4 or not val.isinstance(bool):
+            logging.error("Incorrect params")
+            return
 
-    async def set_HDCP_support(self, val):
-        success = self.client.set_HDCP_support(val)
+        success = self.client.set_CEC_auto_power(out, val)
         if success:
-            self.states["HDCPSupport"] = val
+            keys = [
+                "out1CECAutoPower",
+                "out2CECAutoPower",
+                "out3CECAutoPower",
+                "out4CECAutoPower",
+            ]
+            self.update_state_on_success(keys, out, val)
+        else:
+            logging.error("SET CEC AUTO POWER FAILED")
+
+    async def set_CEC_power_delay_time(self, out, val):
+        if out < 1 or out > 4 or not val.isinstance(bool):
+            logging.error("Incorrect params")
+            return
+
+        success = self.client.set_CEC_power_delay_time(out, val)
+        if success:
+            keys = [
+                "out1CECPowerDelayTime",
+                "out2CECPowerDelayTime",
+                "out3CECPowerDelayTime",
+                "out4CECPowerDelayTime",
+            ]
+            self.update_state_on_success(keys, out, val)
+        else:
+            logging.error("SET CEC POWER DELAY TIME FAILED")
+
+    async def set_HDCP_support(self, inp, val):
+        if inp < 1 or inp > 4 or not val.isinstance(bool):
+            logging.error("Incorrect params")
+            return
+
+        success = self.client.set_HDCP_support(inp, val)
+        if success:
+            keys = [
+                "in1HDCPSupport",
+                "in2HDCPSupport",
+                "in3HDCPSupport",
+                "in4HDCPSupport",
+            ]
+            self.update_state_on_success(keys, inp, val)
+        else:
+            logging.error("SET HDCP SUPPORT FAILED")
 
     async def set_input_EDID(self, inp, edid_val):
+        if inp < 1 or inp > 4:
+            logging.error("Incorrect params")
+            return
+
         success = self.client.set_input_EDID(inp, edid_val)
         if success:
-            if (inp) == 1:
-                self.states["input1EDID"] = edid_val
-            if (inp) == 2:
-                self.states["input1EDID"] = edid_val
-            if (inp) == 3:
-                self.states["input1EDID"] = edid_val
-            if (inp) == 4:
-                self.states["input1EDID"] = edid_val
+            keys = ["in1EDID", "in2EDID", "in3EDID", "in4EDID"]
+            self.update_state_on_success(keys, inp, edid_val)
+        else:
+            logging.error("SET INPUT EDID FAILED")
 
-    async def set_mute(self, val):
-        success = self.client.set_mute(val)
+    async def set_mute(self, type, out, val):
+        if (
+            out < 1
+            or out > 4
+            or not val.isinstance(bool)
+            or type not in ["hdmi", "spdif", "audio"]
+        ):
+            logging.error("Incorrect params")
+            return
+
+        success = self.client.set_mute(type, out, val)
         if success:
-            self.states["mute"] = val
+            keys = [
+                "hdmiaudioout1",
+                "hdmiaudioout2",
+                "spdifaudioout1",
+                "spdifaudioout2",
+                "audioout1",
+                "audioout2",
+            ]
+            # TODO update state key
+            # self.update_state_on_success(keys, out, val)
+        else:
+            logging.error("SET MUTE FAILED")
+
+    def update_state_on_success(self, keys, num, state):
+        for key in keys:
+            if str(num) in key:
+                self.states[key] = state
+        self._state_change_callback(self.states)
+
+    # def async async_get_state(self):
+    # return self.states
